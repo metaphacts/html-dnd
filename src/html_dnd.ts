@@ -1,6 +1,56 @@
 namespace dnd {
   "use strict";
 
+  const wnd = window as any;
+  
+  wnd.__stores = wnd.__stores || {};
+  wnd.__latest = wnd.__latest || 0;
+  
+  export function drag(draggable: Element, callback: (storeId: number) => void): void {
+    const storeId = wnd.__latest++;
+    
+    const store = new DragDataStore();
+    // For the dragstart event. New data can be added to the drag data store.
+    store.mode = "readwrite";
+    
+    const dataTransfer = new DataTransfer(store);
+    
+    wnd.__stores[storeId] = {
+      store: store,
+      dataTransfer: dataTransfer,
+      draggable: draggable
+    };
+    
+    const dragstartEvent = createEventWithDataTransfer("dragstart", dataTransfer);
+    draggable.dispatchEvent(dragstartEvent);
+    
+    callback(storeId);
+  }
+  
+  export function drop(storeId: number, droppable: Element): void {
+    const desc = wnd.__stores[storeId];
+    const store = desc.store;
+    const dataTransfer = desc.dataTransfer;
+    const draggable = desc.draggable;
+    
+    // For the drop event. The list of items representing dragged data can be
+    // read, including the data. No new data can be added.
+    store.mode = "readonly";
+
+    const dragOverEvent = createEventWithDataTransfer("dragover", dataTransfer);
+    droppable.dispatchEvent(dragOverEvent);
+
+    const dropEvent = createEventWithDataTransfer("drop", dataTransfer);
+    droppable.dispatchEvent(dropEvent);
+
+    // For all other events. The formats and kinds in the drag data store list
+    // of items representing dragged data can be enumerated, but the data itself
+    // is unavailable and no new data can be added.
+    store.mode = "protected";
+
+    const dragendEvent = createEventWithDataTransfer("dragend", dataTransfer);
+    draggable.dispatchEvent(dragendEvent);
+  }
 
   export function simulate(draggable: Element, droppable: Element): void {
     const store = new DragDataStore();
